@@ -1,2 +1,2 @@
 # programme-choice-simulator
-MNL
+programme_choice.html
