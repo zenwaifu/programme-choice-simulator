@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aiman's Programme Choice – Multinomial Logit Model</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fdf5f7;
+    --card: #ffffff;
+    --border: #f0d8e0;
+    --border-light: #fae8ee;
+    --text: #2d1a22;
+    --muted: #9c7785;
+    --accent: #c9456e;
+    --accent-light: #f7dce5;
+    --accent-mid: #e0829f;
+    --pink-1: #fce8ef;
+    --pink-2: #f9d0de;
+    --pink-3: #f0a0bc;
+    --pink-4: #c9456e;
+    --pink-5: #8e2249;
+
+    /* Programme colours — pastel */
+    --pure: #f87171;       --pure-l: #fff0f0;   --pure-m: #fca5a5;
+    --app:  #4ade80;       --app-l:  #f0fff4;   --app-m:  #86efac;
+    --eng:  #a78bfa;       --eng-l:  #f3f0ff;   --eng-m:  #c4b5fd;
+    --acc:  #fbbf24;       --acc-l:  #fffbeb;   --acc-m:  #fcd34d;
+    --mgmt: #60a5fa;       --mgmt-l: #eff6ff;   --mgmt-m: #93c5fd;
+    --arts: #fb923c;       --arts-l: #fff7ed;   --arts-m: #fdba74;
+
+    /* Factor colours — pink shades for weights */
+    --f0: #e88aa8; --f1: #d4537e; --f2: #c9456e; --f3: #b03560;
+    --f4: #8e2249; --f5: #f5b8cc;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* — top bar — */
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-logo {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent) 0%, #f07299 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .topbar-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--text); }
+  .topbar-sub { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+  .page { max-width: 1080px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* — section label — */
+  .sec {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+
+  /* — panels — */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem 1.4rem;
+  }
+
+  /* — KPI strip — */
+  .kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .kpi {
+    background: linear-gradient(135deg, #fff 60%, var(--pink-1));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.1rem 1.2rem; position: relative; overflow: hidden;
+  }
+  .kpi::before {
+    content:''; position:absolute; right:-20px; top:-20px;
+    width:80px; height:80px; border-radius:50%;
+    background: var(--accent-light); opacity: 0.5;
+  }
+  .kpi-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+  .kpi-val   { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--text); position: relative; }
+  .kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .badge { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+           padding:3px 10px; border-radius:20px; margin-top:3px; }
+
+  /* — Programme factor grid — 1 row per programme — */
+  .prog-panel { margin-bottom: 1.1rem; }
+
+  /* Header row: labels above the factor columns */
+  .prog-header-row {
+    display: grid;
+    grid-template-columns: 140px repeat(6, 1fr) 52px;
+    gap: 0 8px;
+    padding: 6px 12px 6px 14px;
+    background: var(--pink-1);
+    border-radius: 10px 10px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+  }
+  .ph-blank { }
+  .ph-factor {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    text-align: center;
+  }
+
+  .prog-grid  { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 0 0 12px 12px; overflow: hidden; }
+
+  .prog-block {
+    background: var(--card);
+    display: grid;
+    grid-template-columns: 140px repeat(6, 1fr) 52px;
+    align-items: center;
+    gap: 0 8px;
+    padding: 10px 12px 10px 14px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .prog-block:last-child { border-bottom: none; }
+
+  .prog-name-col {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .prog-name { font-size: 12px; font-weight: 600; }
+  .prog-u    { font-size: 10px; font-weight: 500; color: var(--muted); }
+
+  .fm { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .fm-val {
+    font-size: 10px; font-weight: 700; color: var(--text);
+    min-width: 16px; text-align: center;
+  }
+  .fm input[type=range] { width: 100%; cursor: pointer; }
+
+  /* — Slider base — background set via JS for fill effect — */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    height: 5px; border-radius: 4px;
+    outline: none; border: none;
+    /* background injected by JS */
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 5px; border-radius: 4px;
+    background: transparent; /* JS controls the element background */
+  }
+  input[type=range]::-moz-range-track {
+    height: 5px; border-radius: 4px; background: var(--border);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px; height: 15px; border-radius: 50%;
+    margin-top: -5px; cursor: pointer;
+    border: 2.5px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    transition: transform 0.1s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.15); }
+  input[type=range]::-moz-range-thumb {
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 2.5px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    cursor: pointer;
+  }
+
+  /* — Side panel — */
+  .side-panel { display: grid; grid-template-columns: 320px 1fr; gap: 1.1rem; margin-bottom: 1.1rem; }
+
+  .w-item { display: grid; grid-template-columns: 70px 1fr 36px; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .w-name { font-size: 12px; color: var(--muted); }
+  .w-val  { font-size: 11px; font-weight: 600; color: var(--text); text-align: right; }
+  .mu-note { font-size: 10px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .mu-item { display: grid; grid-template-columns: 70px 1fr 36px; align-items: center; gap: 8px; }
+
+  /* — Charts — */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .leg { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* — Assumptions — */
+  .assumptions {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.75;
+    margin-top: 1.25rem;
+  }
+  .assumptions h3 { font-family: 'DM Serif Display', serif; font-size: 16px; color: var(--text); margin-bottom: 10px; }
+  .assumptions ul { padding-left: 1.2rem; }
+  .assumptions li { margin-bottom: 5px; }
+  .assumptions strong { color: var(--text); }
+  code { background: var(--pink-1); padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; color: var(--accent); }
+  .formula-box {
+    background: linear-gradient(135deg, var(--pink-1), var(--accent-light));
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 0.7rem 1rem; margin: 10px 0;
+    font-size: 13px; font-family: monospace; color: var(--accent);
+    overflow-x: auto;
+  }
+  .divider {
+    height: 1px; background: var(--border-light);
+    margin: 12px 0;
+  }
+
+  @media (max-width: 700px) {
+    .prog-grid  { grid-template-columns: 1fr 1fr; }
+    .side-panel { grid-template-columns: 1fr; }
+    .charts-row { grid-template-columns: 1fr; }
+    .kpi-row    { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🎓</div>
+  <span class="topbar-title">Programme Choice Simulator</span>
+  <span class="topbar-sub">Multinomial Logit Model · Aiman</span>
+</div>
+
+<div class="page">
+
+  <!-- KPI -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Top Choice</div>
+      <div class="kpi-val" id="kpi-prog">—</div>
+      <div class="kpi-sub" id="kpi-badge"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Probability</div>
+      <div class="kpi-val" id="kpi-prob">—</div>
+      <div class="kpi-sub">MNL softmax</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Utility Score</div>
+      <div class="kpi-val" id="kpi-util">—</div>
+      <div class="kpi-sub">weighted sum</div>
+    </div>
+  </div>
+
+  <!-- Programme sliders -->
+  <div class="prog-panel">
+    <div class="sec" style="margin-bottom:6px;">Programme ratings (1–5) · 1 row per programme</div>
+    <div class="prog-header-row">
+      <div class="ph-blank"></div>
+      <div class="ph-factor">Interest</div>
+      <div class="ph-factor">Exam</div>
+      <div class="ph-factor">Career</div>
+      <div class="ph-factor">Location</div>
+      <div class="ph-factor">Fees</div>
+      <div class="ph-factor">Explore</div>
+      <div class="ph-blank"></div>
+    </div>
+    <div class="prog-grid" id="prog-container"></div>
+  </div>
+
+  <!-- Weights + Prob chart -->
+  <div class="side-panel">
+    <div class="panel">
+      <div class="sec">Factor weights</div>
+      <div id="weight-container"></div>
+      <div class="divider"></div>
+      <div class="sec" style="margin-bottom:8px;">Scale factor μ</div>
+      <div class="mu-item">
+        <span class="w-name">μ</span>
+        <input type="range" min="1" max="5" step="0.1" value="2.5" id="mu-slider">
+        <span class="w-val" id="mu-val">2.5</span>
+      </div>
+      <p class="mu-note">Higher μ = sharper, more decisive predictions</p>
+    </div>
+
+    <div class="panel">
+      <div class="sec">Choice probabilities</div>
+      <div class="legend-row" id="prob-legend"></div>
+      <div style="position:relative; width:100%; height:210px;">
+        <canvas id="chartProb"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Utility + Radar -->
+  <div class="charts-row">
+    <div class="panel">
+      <div class="sec">Utility composition by factor</div>
+      <div style="position:relative; width:100%; height:240px;">
+        <canvas id="chartUtil"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="sec">Factor profile — radar</div>
+      <div style="position:relative; width:100%; height:240px;">
+        <canvas id="chartRadar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assumptions -->
+  <div class="assumptions">
+    <h3>Model Documentation &amp; Assumptions</h3>
+    <ul>
+      <li><strong>Decision maker:</strong> Aiman, selecting one programme from 6 mutually exclusive alternatives.</li>
+      <li><strong>Utility function:</strong> <code>U_i = Σ (weight_j × rating_ij)</code> — weighted linear combination of factor ratings.</li>
+      <li><strong>Choice rule — MNL:</strong> Probabilities via softmax:</li>
+    </ul>
+    <div class="formula-box">P(i) = exp(μ × U_i) / Σⱼ exp(μ × U_j)</div>
+    <ul>
+      <li><strong>Scale factor μ:</strong> Controls decisiveness. Higher μ concentrates probability on top-utility option. Default = 2.5.</li>
+      <li><strong>IIA assumption:</strong> MNL assumes Independence of Irrelevant Alternatives — ratio of any two probabilities is unaffected by other alternatives.</li>
+      <li><strong>Ratings:</strong> Integer scale 1–5 (1 = very low, 5 = very high), adjustable per programme per factor.</li>
+      <li><strong>Weights:</strong> Reflect importance of each factor (default: Interest 30%, Career 25%, Exam 20%, Location 10%, Fees 10%, Explore 5%).</li>
+      <li><strong>Stochastic element:</strong> Even the lowest-utility programme retains a nonzero selection probability.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+const PROGS     = ['Pure Sci.','Applied Sci.','Engineering','Accounting','Management','Arts'];
+const PROG_FULL = ['Pure Sciences','Applied Sciences','Engineering','Accounting','Management','Arts'];
+const FACTORS   = ['Interest','Exam','Career','Location','Fees','Explore'];
+const W_DEF     = [30, 20, 25, 10, 10, 5];
+const R_DEF     = [
+  [5,5,3,3,4,2],
+  [4,5,4,3,3,3],
+  [4,5,5,2,5,2],
+  [3,4,4,4,4,2],
+  [3,3,3,5,3,3],
+  [2,3,2,4,2,4],
+];
+
+// Programme palette: pastel red, green, purple, yellow, blue, orange
+const P_MAIN = ['#f87171','#4ade80','#a78bfa','#fbbf24','#60a5fa','#fb923c'];
+const P_LIGHT= ['#fff0f0','#f0fff4','#f3f0ff','#fffbeb','#eff6ff','#fff7ed'];
+const P_MID  = ['#fca5a5','#86efac','#c4b5fd','#fcd34d','#93c5fd','#fdba74'];
+
+// Factor colours — pink shades for weights panel + utility stacked chart
+const F_COLORS = ['#f9a8c9','#e879a6','#c9456e','#a0264f','#7a1a3a','#fbd0e0'];
+
+let ratings = R_DEF.map(r => [...r]);
+let weights = [...W_DEF];
+let mu = 2.5;
+
+// — Slider fill helper —
+const TRACK_EMPTY = '#f0d8e0';
+function fillSlider(input, color) {
+  const min = +input.min, max = +input.max, val = +input.value;
+  const pct = ((val - min) / (max - min)) * 100;
+  input.style.background =
+    `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, ${TRACK_EMPTY} ${pct}%, ${TRACK_EMPTY} 100%)`;
+  input.style.setProperty('--thumb-color', color); // for thumb via CSS var if needed
+}
+
+function computeUtils() {
+  return ratings.map(r => FACTORS.reduce((s,_,fi) => s + r[fi]*(weights[fi]/100), 0));
+}
+function softmax(u) {
+  const e = u.map(x => Math.exp(mu*x)), t = e.reduce((a,b)=>a+b,0);
+  return e.map(x => x/t);
+}
+
+const gc = 'rgba(0,0,0,0.05)', tc = '#9c7785';
+
+// Chart: Probabilities
+const chartProb = new Chart(document.getElementById('chartProb'), {
+  type: 'bar',
+  data: { labels: PROGS, datasets: [{ data:[], backgroundColor:P_MAIN, borderRadius:5, borderSkipped:false }] },
+  options: {
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c=>' '+(c.raw*100).toFixed(1)+'%' } } },
+    scales:{
+      x:{ min:0, max:1, ticks:{color:tc, callback:v=>(v*100).toFixed(0)+'%', font:{size:11}}, grid:{color:gc} },
+      y:{ ticks:{color:tc, font:{size:11}}, grid:{display:false} }
+    }
+  }
+});
+
+// Chart: Utility stacked (pink shades per factor)
+const chartUtil = new Chart(document.getElementById('chartUtil'), {
+  type: 'bar',
+  data: {
+    labels: PROGS,
+    datasets: FACTORS.map((f,fi) => ({
+      label:f, data:[], backgroundColor:F_COLORS[fi],
+      borderRadius:fi===5?4:0, borderSkipped:false, stack:'u'
+    }))
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{
+        display:true, position:'bottom',
+        labels:{ usePointStyle:true, pointStyle:'rect', font:{size:10}, color:tc, boxWidth:10, padding:10 }
+      },
+      tooltip:{ callbacks:{ label: c=>' '+c.dataset.label+': '+c.raw.toFixed(2) } }
+    },
+    scales:{
+      x:{ ticks:{color:tc, font:{size:10}}, grid:{display:false} },
+      y:{ ticks:{color:tc, font:{size:10}}, grid:{color:gc} }
+    }
+  }
+});
+
+// Chart: Radar (programme colours)
+const chartRadar = new Chart(document.getElementById('chartRadar'), {
+  type: 'radar',
+  data: {
+    labels: FACTORS,
+    datasets: PROGS.map((p,pi) => ({
+      label:p, data:[], borderColor:P_MAIN[pi],
+      backgroundColor:P_MAIN[pi]+'28', pointBackgroundColor:P_MAIN[pi],
+      pointRadius:3, borderWidth:1.8, borderDash:pi>2?[4,3]:[]
+    }))
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{
+        display:true, position:'bottom',
+        labels:{ usePointStyle:true, pointStyle:'circle', font:{size:10}, color:tc, boxWidth:8, padding:8 }
+      }
+    },
+    scales:{ r:{
+      min:0, max:5, ticks:{stepSize:1, color:tc, font:{size:9}, backdropColor:'transparent'},
+      grid:{color:gc}, pointLabels:{color:tc, font:{size:10}}
+    }}
+  }
+});
+
+function update() {
+  const u = computeUtils(), p = softmax(u), mi = p.indexOf(Math.max(...p));
+
+  document.getElementById('kpi-prog').textContent = PROG_FULL[mi];
+  document.getElementById('kpi-prob').textContent = (p[mi]*100).toFixed(1)+'%';
+  document.getElementById('kpi-util').textContent = u[mi].toFixed(2);
+  document.getElementById('kpi-badge').innerHTML =
+    `<span class="badge" style="background:${P_LIGHT[mi]};color:${P_MAIN[mi]};">● ${PROGS[mi]}</span>`;
+
+  // Prob chart: highlight winner
+  chartProb.data.datasets[0].data = p;
+  chartProb.data.datasets[0].backgroundColor = p.map((_,i) => i===mi ? P_MAIN[i] : P_MID[i]);
+  chartProb.update('none');
+
+  // Utility chart
+  FACTORS.forEach((_,fi) => {
+    chartUtil.data.datasets[fi].data = ratings.map(r => r[fi]*(weights[fi]/100));
+  });
+  chartUtil.update('none');
+
+  // Radar
+  chartRadar.data.datasets.forEach((ds,pi) => { ds.data = ratings[pi]; });
+  chartRadar.update('none');
+
+  // Per-programme utility label + badge
+  PROGS.forEach((_,pi) => {
+    const el = document.getElementById(`util-${pi}`);
+    if (el) el.textContent = 'U='+u[pi].toFixed(2);
+    const b = document.getElementById(`badge-${pi}`);
+    if (b) {
+      b.textContent = pi===mi ? '★' : '';
+      b.style.background = pi===mi ? P_MAIN[pi] : P_LIGHT[pi];
+      b.style.color = pi===mi ? '#fff' : P_MAIN[pi];
+    }
+  });
+
+  // Legend
+  document.getElementById('prob-legend').innerHTML =
+    PROGS.map((lbl,i) =>
+      `<span class="leg"><span class="leg-dot" style="background:${P_MAIN[i]}"></span>${lbl} ${(p[i]*100).toFixed(1)}%</span>`
+    ).join('');
+}
+
+// Build programme sliders — 1 row per programme
+function buildProgrammeSliders() {
+  const c = document.getElementById('prog-container');
+  PROG_FULL.forEach((prog,pi) => {
+    const div = document.createElement('div');
+    div.className = 'prog-block';
+    div.style.borderLeft = `3px solid ${P_MAIN[pi]}`;
+
+    // Name column
+    const nameCol = document.createElement('div');
+    nameCol.className = 'prog-name-col';
+    nameCol.innerHTML = `
+      <span class="prog-name" style="color:${P_MAIN[pi]}">${prog}</span>
+      <span class="prog-u" id="util-${pi}"></span>`;
+    div.appendChild(nameCol);
+
+    // 6 factor columns
+    FACTORS.forEach((f,fi) => {
+      const item = document.createElement('div');
+      item.className = 'fm';
+      item.innerHTML = `
+        <input type="range" min="1" max="5" step="1" value="${ratings[pi][fi]}" style="accent-color:${P_MAIN[pi]};">
+        <span class="fm-val" id="rv-${pi}-${fi}">${ratings[pi][fi]}</span>`;
+      div.appendChild(item);
+      const inp = item.querySelector('input');
+      fillSlider(inp, P_MAIN[pi]);
+      inp.addEventListener('input', e => {
+        ratings[pi][fi] = +e.target.value;
+        document.getElementById(`rv-${pi}-${fi}`).textContent = e.target.value;
+        fillSlider(e.target, P_MAIN[pi]);
+        update();
+      });
+      // init fill
+      fillSlider(item.querySelector('input'), P_MAIN[pi]);
+    });
+
+    // Badge column
+    const badge = document.createElement('div');
+    badge.style.cssText = `
+      display:flex; align-items:center; justify-content:center;
+      width:44px; height:24px; border-radius:20px; font-size:11px; font-weight:600;
+      background:${P_LIGHT[pi]}; color:${P_MAIN[pi]};
+    `;
+    badge.id = `badge-${pi}`;
+    div.appendChild(badge);
+
+    c.appendChild(div);
+  });
+}
+
+// Build weight sliders (pink shades)
+function buildWeightSliders() {
+  const c = document.getElementById('weight-container');
+  FACTORS.forEach((f,i) => {
+    const div = document.createElement('div');
+    div.className = 'w-item';
+    div.innerHTML = `
+      <span class="w-name">${f}</span>
+      <input type="range" min="0" max="50" step="1" value="${weights[i]}">
+      <span class="w-val" id="wv-${i}">${weights[i]}%</span>`;
+    c.appendChild(div);
+    const inp = div.querySelector('input');
+    fillSlider(inp, F_COLORS[i]);
+    inp.addEventListener('input', e => {
+      weights[i] = +e.target.value;
+      document.getElementById(`wv-${i}`).textContent = e.target.value+'%';
+      fillSlider(e.target, F_COLORS[i]);
+      update();
+    });
+  });
+
+  const muSlider = document.getElementById('mu-slider');
+  fillSlider(muSlider, '#c9456e');
+  muSlider.addEventListener('input', e => {
+    mu = +e.target.value;
+    document.getElementById('mu-val').textContent = (+e.target.value).toFixed(1);
+    fillSlider(e.target, '#c9456e');
+    update();
+  });
+}
+
+buildProgrammeSliders();
+buildWeightSliders();
+update();
+</script>
+</body>
+</html>
